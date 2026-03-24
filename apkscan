@@ -1,0 +1,142 @@
+#!/bin/bash
+
+# Set environment variable and log file location
+ENV="/home/ApkScanner"
+LOGFILE="$ENV/apk_scanner.log"
+PIDFILE="$ENV/apk_scanner.pid"
+
+# Function: Start the application with --analyse option
+start_app() {
+    if [ -f $PIDFILE ]; then
+        echo "Checking if the app is already running..."
+        if ps -p $(cat $PIDFILE) > /dev/null; then
+            echo "The app is already running."
+            exit 1
+        else
+            echo "PID file found but no process running. Deleting PID file."
+            rm $PIDFILE
+        fi
+    fi
+
+    echo "Starting the app with --analyse option..."
+    cd $ENV
+    nohup python main.py --analyse > $LOGFILE 2>&1 &
+    echo $! > $PIDFILE
+    echo "App started."
+}
+
+# Function: Start the application with --order-result option
+order_result_app() {
+    if [ -f $PIDFILE ]; then
+        echo "Checking if the app is already running..."
+        if ps -p $(cat $PIDFILE) > /dev/null; then
+            echo "The app is already running."
+            exit 1
+        else
+            echo "PID file found but no process running. Deleting PID file."
+            rm $PIDFILE
+        fi
+    fi
+
+    echo "Starting the app with --order-result option..."
+    cd $ENV
+    python main.py --order-result
+}
+
+# Function: Start the application with --statistics-apk option
+statistics_apk_app() {
+    if [ -f $PIDFILE ]; then
+        echo "Checking if the app is already running..."
+        if ps -p $(cat $PIDFILE) > /dev/null; then
+            echo "The app is already running."
+            exit 1
+        else
+            echo "PID file found but no process running. Deleting PID file."
+            rm $PIDFILE
+        fi
+    fi
+
+    echo "Starting the app with --statistics-apk option..."
+    cd $ENV
+    python main.py --statistics-apk
+}
+
+# Function: Stop the application
+stop_app() {
+    if [ ! -f $PIDFILE ]; then
+        echo "No PID file found. The app may not be running."
+        exit 1
+    fi
+    echo "Stopping the app..."
+    kill $(cat $PIDFILE)
+    rm $PIDFILE
+    echo "App stopped."
+}
+
+# Function: View logs
+view_log() {
+    tail -fn 1000 $LOGFILE
+}
+
+# Function: Check app status
+check_status() {
+    if [ ! -f $PIDFILE ]; then
+        echo -e "\033[31mThe app is not running.\033[0m"
+        exit 1
+    fi
+    if ps -p $(cat $PIDFILE) > /dev/null; then
+        echo "The app is running. Checking CPU and memory usage..."
+        ps -p $(cat $PIDFILE) -o %cpu,%mem,cmd
+    else
+        echo -e "\033[31mThe app is not in a running state, it might have crashed or turned into a zombie process.\033[0m"
+    fi
+}
+
+# Function: Show help
+show_help() {
+    echo ""
+    echo "    Before running this program, you need to modify the config.ini file in the"
+    echo "current directory, where the LIBRARY_PATH field should be set to the directory"
+    echo "of the applications to be analyzed. Finally, the results will be saved in the "
+    echo "result folder in the current directory, and statistical information will be "
+    echo "saved in the statistics folder."
+    echo ""
+    echo "Usage: $0 [command]"
+    echo "Commands:"
+    echo "  start           Start the application with --analyse option."
+    echo "  order-result    Start the application with --order-result option."
+    echo "  statistics-apk  Start the application with --statistics-apk option."
+    echo "  stop            Stop the application."
+    echo "  log             Tail the application log file."
+    echo "  status          Check the application status."
+    echo "  help            Display this help message."
+}
+
+# Main logic
+case "$1" in
+    start)
+        start_app
+        ;;
+    order-result)
+        order_result_app
+        ;;
+    statistics-apk)
+        statistics_apk_app
+        ;;
+    stop)
+        stop_app
+        ;;
+    log)
+        view_log
+        ;;
+    status)
+        check_status
+        ;;
+    help)
+        show_help
+        ;;
+    *)
+        echo "Unknown command: $1"
+        show_help
+        ;;
+esac
